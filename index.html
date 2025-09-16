@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gasthaus zum Örtzewinkel</title>
+  <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    h1 { text-align: center; }
+    .staff { border: 1px solid #ccc; padding: 10px; margin: 5px 0; border-radius: 8px; }
+    .staff button { margin-left: 10px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>
+  <img src="logo.png" alt="Logo" style="height:80px; vertical-align:middle;">
+  <br>
+  Gasthaus zum Örtzewinkel
+</h1>
+
+  <h2>Trinkgeld-Verteilung</h2>
+  Gesamtbetrag (€): <input id="total" type="number" value="100"><br><br>
+  <div id="staffList"></div>
+  <button id="calc">Berechnen</button>
+  <pre id="out"></pre>
+
+  <h2>Personal verwalten</h2>
+  <button onclick="showAddForm()">+ Personal hinzufügen</button>
+
+  <div id="addForm" class="hidden">
+    Name: <input id="newName"><br>
+    Faktor (z. B. 1 für 100%, 0.6 für 60%): <input id="newFactor" type="number" step="0.1"><br>
+    <button onclick="addStaff()">Speichern</button>
+    <button onclick="hideAddForm()">Abbrechen</button>
+  </div>
+
+<script>
+let employees = JSON.parse(localStorage.getItem("employees")) || [
+  {name: "Anna", factor: 1.0, present: true},
+  {name: "Ben", factor: 0.6, present: true}
+];
+
+function saveEmployees() {
+  localStorage.setItem("employees", JSON.stringify(employees));
+}
+
+function renderStaff() {
+  const div = document.getElementById("staffList");
+  div.innerHTML = "";
+  employees.forEach((e, i) => {
+    const staffDiv = document.createElement("div");
+    staffDiv.className = "staff";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = e.present;
+    cb.onchange = () => { e.present = cb.checked; saveEmployees(); };
+
+    const lbl = document.createElement("span");
+    lbl.textContent = ` ${e.name} (${e.factor*100}%)`;
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✎";
+    editBtn.onclick = () => {
+      const newName = prompt("Neuer Name:", e.name);
+      const newFactor = parseFloat(prompt("Neuer Faktor:", e.factor));
+      if (newName) e.name = newName;
+      if (!isNaN(newFactor)) e.factor = newFactor;
+      saveEmployees();
+      renderStaff();
+    };
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "🗑";
+    delBtn.onclick = () => {
+      if (confirm("Wirklich löschen?")) {
+        employees.splice(i,1);
+        saveEmployees();
+        renderStaff();
+      }
+    };
+
+    staffDiv.appendChild(cb);
+    staffDiv.appendChild(lbl);
+    staffDiv.appendChild(editBtn);
+    staffDiv.appendChild(delBtn);
+    div.appendChild(staffDiv);
+  });
+}
+
+function showAddForm() {
+  document.getElementById("addForm").classList.remove("hidden");
+}
+function hideAddForm() {
+  document.getElementById("addForm").classList.add("hidden");
+}
+function addStaff() {
+  const name = document.getElementById("newName").value;
+  const factor = parseFloat(document.getElementById("newFactor").value);
+  if (!name || isNaN(factor)) return alert("Bitte Name und Faktor eingeben!");
+  employees.push({name, factor, present: true});
+  saveEmployees();
+  renderStaff();
+  hideAddForm();
+}
+
+document.getElementById("calc").onclick = () => {
+  const total = parseFloat(document.getElementById("total").value) || 0;
+  const present = employees.filter(e => e.present);
+  const sumFactors = present.reduce((s,e) => s + e.factor, 0);
+  let out = `Gesamt: € ${total.toFixed(2)}\n\n`;
+  present.forEach(e => {
+    const share = sumFactors ? (e.factor / sumFactors) * total : 0;
+    out += `${e.name}: € ${share.toFixed(2)}\n`;
+  });
+  document.getElementById("out").textContent = out;
+};
+
+renderStaff();
+</script>
+</body>
+</html>
